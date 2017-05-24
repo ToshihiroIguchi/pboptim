@@ -124,6 +124,7 @@ par(mfrow = c(1,1))
 
 
 
+
 #optimx(par, fn, gr=NULL, hess=NULL, lower=-Inf, upper=Inf,
 #       method=c("Nelder-Mead","BFGS"), itnmax=NULL, hessian=FALSE,
 #       control=list(),
