@@ -2,48 +2,125 @@
 #pboptim package
 
 library(DEoptim)
-library(psoptim)
+library(pso)
 library(GA)
+library(copulaedas)
 
-pboptim <- function(initialpar = NULL, fn ,lower, upper,
-                    method = c("DEoptim", "pso", "GA"),
+pboptim <- function(fn ,lower, upper, initialpar = NULL,
+                    method = c("deo", "pso", "GA","edm"),
                     population = 20, generation = 10,
-                    trace = TRUE, maxit = FALSE
+                    trace = TRUE, maximize = FALSE
                     ){
+  #初期設定
   result <- NULL
 
+  #入力値のチェック
+  #上限と下限のベクトルの長さ
+  if(length(lower) != length(upper)){
+    stop("The lengths of lower and upper vectors are different.")
+  }
+  vec_len <- length(lower)
+
+  #上限と下限の範囲が逆転していないか。
+  if(min(upper - lower) < 0){
+    stop("Upper is smaller than lower.")
+  }
+
+  #初期値がNULLでないとき、初期値の長さが上下限の長さと一致しているか。
+  if(!is.null(initialpar) && length(initialpar) != vec_len){
+    stop("The length of the initial value is
+         different from the length of the upper and lower limit values.")
+  }
+
+
   #Differential Evolution Optimization
-  result$DEoptim <- DEoptim(fn = fn, lower = lower, upper = upper,
+  cat("Differential Evolution Optimization \n")
+
+  #DEoptim用の初期値を作成。
+  if(!is.null(initialpar)){
+    deo_par_rand <- rep((upper - lower)*runif(vec_len) + lower, times = (population -1))
+    deo_par <- matrix(c(initialpar, deo_par_rand), ncol = vec_len)
+  }else{
+    deo_par <- NULL
+  }
+
+  #DEoptimによる計算
+  result$deo <- DEoptim(fn = fn, lower = lower, upper = upper,
                             control = DEoptim.control(
-                              VTR = if(maxit){Inf}else{-Inf},
+                              VTR = if(maximize){Inf}else{-Inf},
                               strategy = 2,
                               trace = trace,
-                              initialpop = initialpar,
+                              initialpop = deo_par,
                               itermax = generation,
                               NP = population))
 
   #Particle Swarm Optimization
-  #初期値は定義できない。
-  result$pso <- psoptim(FUN = fn, xmin = lower, xmax = upper,
-                        w = 0.9, c1 = 0.2, c2 = 0.2,
-                        n = population, max.loop = generation,
-                        vmax = c(4, 4), anim = FALSE, seed = rnorm(1))
+  cat("Particle Swarm Optimization \n")
+
+  #初期値を作成
+  if(!is.null(initialpar)){
+    pso_par <- initialpar
+  }else{
+    pso_par <- rep(NA, times = vec_len)
+  }
+
+  #psoptimによる計算
+  result$pso <- psoptim(
+    par = pso_par,
+    fn = fn, lower = lower, upper = upper,
+    control = list(maxit = generation, s = population,
+                   fnscale = if(maximize){-1}else{1},
+                   trace = 1, REPORT = 1, trace.stats = 1)
+  )
+
 
   #Genetic Algorithms
+  cat("Genetic Algorithms \n")
   result$ga <- ga(type = c("real-valued"),
-                  fitness = if(maxit){fn}else{function(x){-fn(x)}},
+                  fitness = if(maximize){fn}else{function(x){-fn(x)}},
                   min = lower, max = upper,
                   popSize = population, maxiter = generation, run = generation,
                   suggestions = initialpar,
-                  optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})))
+                  optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})),
+                  monitor = FALSE)
+
+
+  #Estimation of Distribution Algorithm
+  cat("Estimation of Distribution Algorithm \n")
+  setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
+  GCEDA <- CEDA(copula = "normal", margin = "norm",
+               popSize = population, maxGen = generation)
+  GCEDA@name <- "GCEDA"
+  result$eda <- edaRun(GCEDA, fn, lower, upper)
+
+
+  #結果の整理
+  #世代と推移
+
+  result$eva <- data.frame(
+    DEO = result$deo$member$bestvalit,
+    PSO = result$pso$stats$error,
+    GA = result$ga@summary[,1]*if(maximize){1}else{-1}
+
+  )
+
+
 
   return(result)
 
 }
 
 test <- pboptim(function(x){x[1]^2+x[2]^2},
-                initialpar = matrix(rep(1,times = 40),ncol = 2),
+                initialpar = c(1,1),
                 lower = c(-2,-2),upper = c(2,2))
+
+
+par(mfrow = c(1,1))
+
+
+
+
+
 
 
 
