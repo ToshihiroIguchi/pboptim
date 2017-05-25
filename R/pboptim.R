@@ -7,12 +7,10 @@ library(GA)
 library(copulaedas)
 
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
-                    method = c("deo", "pso", "GA","edm"),
+                    method = c("DEO", "PSO", "GA", "EDA"),
                     population = 20, generation = 10,
                     trace = TRUE, maximize = FALSE
                     ){
-  #初期設定
-  result <- NULL
 
   #入力値のチェック
   #上限と下限のベクトルの長さ
@@ -33,94 +31,109 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   }
 
 
+  #初期設定
+  result <- NULL
+  gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, EDA = NULL)
+
+
+
+  #method,p1 ... pn, value, time
+
+
+
+
   #Differential Evolution Optimization
-  cat("Differential Evolution Optimization \n")
+  if(!is.na(match("DEO", method))){
+    cat("Differential Evolution Optimization \n\n")
 
-  #DEoptim用の初期値を作成。
-  if(!is.null(initialpar)){
-    deo_par_rand <- rep((upper - lower)*runif(vec_len) + lower, times = (population -1))
-    deo_par <- matrix(c(initialpar, deo_par_rand), ncol = vec_len)
-  }else{
-    deo_par <- NULL
+    #DEoptim用の初期値を作成。
+    if(!is.null(initialpar)){
+      deo_par_rand <- rep((upper - lower)*runif(vec_len) + lower, times = (population -1))
+      deo_par <- matrix(c(initialpar, deo_par_rand), ncol = vec_len)
+    }else{
+      deo_par <- NULL
+    }
+
+    #DEoptimによる計算
+    result$deo <- DEoptim(fn = fn, lower = lower, upper = upper,
+                          control = DEoptim.control(
+                            VTR = if(maximize){Inf}else{-Inf},
+                            strategy = 2,
+                            trace = trace,
+                            initialpop = deo_par,
+                            itermax = generation,
+                            NP = population))
+
+    gen_list$DEO <- result$deo$member$bestvalit
   }
-
-  #DEoptimによる計算
-  result$deo <- DEoptim(fn = fn, lower = lower, upper = upper,
-                            control = DEoptim.control(
-                              VTR = if(maximize){Inf}else{-Inf},
-                              strategy = 2,
-                              trace = trace,
-                              initialpop = deo_par,
-                              itermax = generation,
-                              NP = population))
 
   #Particle Swarm Optimization
-  cat("Particle Swarm Optimization \n")
+  if(!is.na(match("PSO", method))){
+    cat("Particle Swarm Optimization \n\n")
 
-  #初期値を作成
-  if(!is.null(initialpar)){
-    pso_par <- initialpar
-  }else{
-    pso_par <- rep(NA, times = vec_len)
+    #初期値を作成
+    if(!is.null(initialpar)){
+      pso_par <- initialpar
+    }else{
+      pso_par <- rep(NA, times = vec_len)
+    }
+
+    #psoptimによる計算
+    result$pso <- psoptim(
+      par = pso_par,
+      fn = fn, lower = lower, upper = upper,
+      control = list(maxit = generation, s = population,
+                     fnscale = if(maximize){-1}else{1},
+                     trace = 1, REPORT = 1, trace.stats = 1))
+    gen_list$PSO <- result$pso$stats$error
   }
 
-  #psoptimによる計算
-  result$pso <- psoptim(
-    par = pso_par,
-    fn = fn, lower = lower, upper = upper,
-    control = list(maxit = generation, s = population,
-                   fnscale = if(maximize){-1}else{1},
-                   trace = 1, REPORT = 1, trace.stats = 1)
-  )
-
-
   #Genetic Algorithms
-  cat("Genetic Algorithms \n")
-  result$ga <- ga(type = c("real-valued"),
-                  fitness = if(maximize){fn}else{function(x){-fn(x)}},
-                  min = lower, max = upper,
-                  popSize = population, maxiter = generation, run = generation,
-                  suggestions = initialpar,
-                  optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})),
-                  monitor = FALSE)
-
+  if(!is.na(match("GA", method))){
+    cat("Genetic Algorithms \n\n")
+    result$ga <- ga(type = c("real-valued"),
+                    fitness = if(maximize){fn}else{function(x){-fn(x)}},
+                    min = lower, max = upper,
+                    popSize = population, maxiter = generation, run = generation,
+                    suggestions = initialpar,
+                    optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})),
+                    monitor = FALSE)
+    gen_list$GA <- result$ga@summary[,1]*if(maximize){1}else{-1}
+  }
 
   #Estimation of Distribution Algorithm
-  cat("Estimation of Distribution Algorithm \n")
-  setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
-  GCEDA <- CEDA(copula = "normal", margin = "norm",
-               popSize = population, maxGen = generation)
-  GCEDA@name <- "GCEDA"
-  result$eda <- edaRun(GCEDA, fn, lower, upper)
+  if(!is.na(match("EDA", method))){
+    cat("Estimation of Distribution Algorithm \n\n")
+    setMethod("edaReport", "EDA", edaReportSimple)
+    setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
+    GCEDA <- CEDA(copula = "normal", margin = "norm",
+                  popSize = population, maxGen = generation)
+    GCEDA@name <- "GCEDA"
+    eda_cap <- capture.output(result$eda <- edaRun(GCEDA, fn, lower, upper))
 
+    #画面出力から推移読み取り
+    #最初と最後の位置
+    pos1 <- regexpr("Generation", eda_cap[2])[1]+11
+    pos2 <- regexpr("Minimum", eda_cap[2])[1]+7
 
-  #結果の整理
-  #世代と推移
+    #切り出し
+    best_eda <- NULL
+    for(i in 3:length(eda_cap)){
+      best_eda <- c(best_eda,
+                    as.numeric(substr(eda_cap[i], pos1, pos2)))
+    }
+    gen_list$EDA <- best_eda
+  }
 
-  result$eva <- data.frame(
-    DEO = result$deo$member$bestvalit,
-    PSO = result$pso$stats$error,
-    GA = result$ga@summary[,1]*if(maximize){1}else{-1}
-
-  )
-
-
-
+  result$gen_list <- gen_list
   return(result)
-
 }
 
+set.seed(108)
+par(mfrow = c(1,1))
 test <- pboptim(function(x){x[1]^2+x[2]^2},
                 initialpar = c(1,1),
                 lower = c(-2,-2),upper = c(2,2))
-
-
-par(mfrow = c(1,1))
-
-
-
-
-
 
 
 
