@@ -6,6 +6,9 @@ library(pso)
 library(GA)
 library(copulaedas)
 
+
+#Population based optimization
+#DEO, PSO, GA, EDAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     method = c("DEO", "PSO", "GA", "EDA"),
                     population = 20, generation = 10,
@@ -30,20 +33,17 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
          different from the length of the upper and lower limit values.")
   }
 
-
   #初期設定
   result <- NULL
   gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, EDA = NULL)
 
-
-
-  #method,p1 ... pn, value, time
-
-
-
+  #結果一覧保存用データフレーム
+  sum_df <- NULL
+  sum_df_names <- c("method", paste0("par", c(1 : vec_len)), "value", "time")
 
   #Differential Evolution Optimization
   if(!is.na(match("DEO", method))){
+    t0 <- proc.time()
     cat("Differential Evolution Optimization \n\n")
 
     #DEoptim用の初期値を作成。
@@ -65,10 +65,19 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                             NP = population))
 
     gen_list$DEO <- result$deo$member$bestvalit
+    t <- proc.time() - t0
+
+    #結果の整理
+    sum_df0 <- as.data.frame(matrix(c(result$deo$optim$bestmem,
+                                      result$deo$optim$bestval, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "DEO", sum_df0)
+    names(sum_df0) <- sum_df_names
+    sum_df <- rbind(sum_df, sum_df0)
   }
 
   #Particle Swarm Optimization
   if(!is.na(match("PSO", method))){
+    t0 <- proc.time()
     cat("Particle Swarm Optimization \n\n")
 
     #初期値を作成
@@ -86,10 +95,19 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                      fnscale = if(maximize){-1}else{1},
                      trace = 1, REPORT = 1, trace.stats = 1))
     gen_list$PSO <- result$pso$stats$error
+    t <- proc.time() - t0
+
+    #結果の整理
+    sum_df0 <- as.data.frame(matrix(c(result$pso$par,
+                                      result$pso$value, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "PSO", sum_df0)
+    names(sum_df0) <- sum_df_names
+    sum_df <- rbind(sum_df, sum_df0)
   }
 
   #Genetic Algorithms
   if(!is.na(match("GA", method))){
+    t0 <- proc.time()
     cat("Genetic Algorithms \n\n")
     result$ga <- ga(type = c("real-valued"),
                     fitness = if(maximize){fn}else{function(x){-fn(x)}},
@@ -99,10 +117,20 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})),
                     monitor = FALSE)
     gen_list$GA <- result$ga@summary[,1]*if(maximize){1}else{-1}
+    ga_best <- result$ga@fitnessValue*if(maximize){1}else{-1}
+    t <- proc.time() - t0
+
+    #結果の整理
+    sum_df0 <- as.data.frame(matrix(c(result$ga@solution,
+                                      ga_best, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "GA", sum_df0)
+    names(sum_df0) <- sum_df_names
+    sum_df <- rbind(sum_df, sum_df0)
   }
 
   #Estimation of Distribution Algorithm
   if(!is.na(match("EDA", method))){
+    t0 <- proc.time()
     cat("Estimation of Distribution Algorithm \n\n")
     setMethod("edaReport", "EDA", edaReportSimple)
     setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
@@ -123,11 +151,113 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     as.numeric(substr(eda_cap[i], pos1, pos2)))
     }
     gen_list$EDA <- best_eda
+    t <- proc.time() - t0
+
+    #結果の整理
+    sum_df0 <- as.data.frame(matrix(c(result$eda@bestSol,
+                                      result$eda@bestEval, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "EDA", sum_df0)
+    names(sum_df0) <- sum_df_names
+    sum_df <- rbind(sum_df, sum_df0)
   }
 
+  #まとめが存在するか確認
+  if(is.null(sum_df)){
+    stop("The result does not exist. Please review method.")
+  }
+
+  #まとめのmethodを文字型に変更
+  sum_df$method <- as.character(sum_df$method)
+
+  #最適な結果
+  sum_best_df <- sum_df[order(sum_df$value * if(maximize){-1}else{1}), ][1, ]
+  result$bestmethod <- sum_best_df[1, 1]
+  result$bestpar <- sum_best_df[1, c(2: (vec_len + 1))]
+  result$bestvalue <- sum_best_df[1, (2 + vec_len)]
+
+  #設定値の保管
+  result$setting <- list(fn = fn, lower = lower, upper = upper,
+                         population = population, generation = generation,
+                         maximize = maximize)
+
+  #結果の格納と戻り値
+  result$maximize <- maximize
   result$gen_list <- gen_list
+  result$summary <- sum_df
+  class(result) <- "pboptim"
   return(result)
 }
+
+#結果表示
+summary.pboptim <- function(obj){
+
+  cat("A function to be ")
+  if(obj$setting$maximize){cat("maximized.\n")}else{cat("minimized.\n\n")}
+  print(obj$setting$fn)
+  cat("\n")
+
+  cat("The population size is ")
+  cat(as.integer(obj$setting$population))
+  cat("\n")
+
+  cat("The generation size is ")
+  cat(as.integer(obj$setting$generation))
+  cat("\n\n")
+
+  cat("Results.\n")
+  print(obj$summary)
+  cat("\n")
+
+  cat("Best method is ")
+  cat(obj$bestmethod)
+  cat("\n\n")
+
+  cat("Best parameters. \n")
+  print(obj$bestpar)
+  cat("\n")
+
+  cat("Best value is ")
+  cat(obj$bestvalue)
+  cat("\n\n")
+}
+
+
+plot.pboptim <- function(obj){
+  #範囲を計算
+  #digitsの値
+  all_list <- c(obj$gen_list$DEO, obj$gen_list$PSO, obj$gen_list$GA, obj$gen_list$EDA)
+  list_min <- min(all_list)
+  list_max <- max(all_list)
+  di_par <- ceiling(log(list_max - list_min, base = 10))
+
+  #yの最小値と最大値
+  ymin <- ceiling(list_min / (10^di_par)) * 10^di_par
+  ymax <- floor(list_min / (10^di_par)) * 10^di_par
+
+  #DEO
+  plot(obj$gen_list$DEO, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 1)
+
+  #PSO
+  par(new = TRUE)
+  plot(obj$gen_list$PSO, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 2)
+
+  #GA
+  par(new = TRUE)
+  plot(obj$gen_list$GA, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 3)
+
+  #EDA
+  par(new = TRUE)
+  plot(obj$gen_list$EDA, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 4)
+
+  par(new = TRUE)
+  plot(xlab = "Generation")
+
+
+
+}
+
+plot(test)
+
 
 set.seed(108)
 par(mfrow = c(1,1))
