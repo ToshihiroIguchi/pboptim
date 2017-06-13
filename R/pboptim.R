@@ -234,29 +234,22 @@ plot.pboptim <- function(obj){
   ymin <- ceiling(list_min / (10^di_par)) * 10^di_par
   ymax <- floor(list_min / (10^di_par)) * 10^di_par
 
-  #DEO
-  plot(obj$gen_list$DEO, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 1)
+  #各アルゴリズムの最適値推移をプロットする関数
+  opt_plot <- function(obj, col = 1, new = TRUE){
+    if(is.null(obj)){return()}
+    par(new = new)
+    plot(obj, type = "l", ylim = c(ymax, ymin), ann = FALSE, col = col,
+         xlab = "Generation", ylab = "Fitness Value")
+  }
 
-  #PSO
-  par(new = TRUE)
-  plot(obj$gen_list$PSO, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 2)
+  opt_plot(obj$gen_list$DEO, col = 1, new = FALSE)
+  opt_plot(obj$gen_list$PSO, col = 2)
+  opt_plot(obj$gen_list$GA, col = 3)
+  opt_plot(obj$gen_list$EDA, col = 4)
 
-  #GA
-  par(new = TRUE)
-  plot(obj$gen_list$GA, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 3)
-
-  #EDA
-  par(new = TRUE)
-  plot(obj$gen_list$EDA, type ="l", ylim = c(ymax, ymin), ann = FALSE, col = 4)
-
-  par(new = TRUE)
-  plot(xlab = "Generation")
-
-
+  par(new = FALSE)
 
 }
-
-plot(test)
 
 
 set.seed(108)
@@ -264,6 +257,11 @@ par(mfrow = c(1,1))
 test <- pboptim(function(x){x[1]^2+x[2]^2},
                 initialpar = c(1,1),
                 lower = c(-2,-2),upper = c(2,2))
+
+
+plot(test)
+
+
 
 
 
