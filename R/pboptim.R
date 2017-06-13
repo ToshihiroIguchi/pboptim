@@ -36,8 +36,8 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   #初期設定
   result <- NULL
   gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, EDA = NULL)
-  #gen_df <- data.frame()
-
+  fns <- if(maximize){-1}else{1}
+  fn2 <- if(!maximize){fn}else{function(x){-fn(x)}}
 
   #結果一覧保存用データフレーム
   sum_df <- NULL
@@ -57,21 +57,22 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     }
 
     #DEoptimによる計算
-    result$deo <- DEoptim(fn = fn, lower = lower, upper = upper,
+    result$deo <- DEoptim(fn = fn2,
+                          lower = lower, upper = upper,
                           control = DEoptim.control(
-                            VTR = if(maximize){Inf}else{-Inf},
+                            #VTR = if(maximize){Inf}else{-Inf},
                             strategy = 2,
                             trace = trace,
                             initialpop = deo_par,
                             itermax = generation,
                             NP = population))
 
-    gen_list$DEO <- result$deo$member$bestvalit
+    gen_list$DEO <- result$deo$member$bestvalit * fns
     t <- proc.time() - t0
 
     #結果の整理
     sum_df0 <- as.data.frame(matrix(c(result$deo$optim$bestmem,
-                                      result$deo$optim$bestval, t[3]), nrow = 1))
+                                      result$deo$optim$bestval * fns, t[3]), nrow = 1))
     sum_df0 <- data.frame(method = "DEO", sum_df0)
     names(sum_df0) <- sum_df_names
     sum_df <- rbind(sum_df, sum_df0)
@@ -89,19 +90,20 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
       pso_par <- rep(NA, times = vec_len)
     }
 
+
     #psoptimによる計算
     result$pso <- psoptim(
       par = pso_par,
       fn = fn, lower = lower, upper = upper,
       control = list(maxit = generation, s = population,
-                     fnscale = if(maximize){-1}else{1},
+                     fnscale = fns,
                      trace = 1, REPORT = 1, trace.stats = 1))
-    gen_list$PSO <- result$pso$stats$error
+    gen_list$PSO <- result$pso$stats$error * fns
     t <- proc.time() - t0
 
     #結果の整理
     sum_df0 <- as.data.frame(matrix(c(result$pso$par,
-                                      result$pso$value, t[3]), nrow = 1))
+                                      result$pso$value * fns, t[3]), nrow = 1))
     sum_df0 <- data.frame(method = "PSO", sum_df0)
     names(sum_df0) <- sum_df_names
     sum_df <- rbind(sum_df, sum_df0)
@@ -112,7 +114,7 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     t0 <- proc.time()
     cat("Genetic Algorithms \n\n")
     result$ga <- ga(type = c("real-valued"),
-                    fitness = if(maximize){fn}else{function(x){-fn(x)}},
+                    fitness = function(x){-fn2(x)},
                     min = lower, max = upper,
                     popSize = population, maxiter = generation, run = generation,
                     suggestions = initialpar,
@@ -134,12 +136,12 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   if(!is.na(match("EDA", method))){
     t0 <- proc.time()
     cat("Estimation of Distribution Algorithm \n\n")
-    setMethod("edaReport", "EDA", edaReportSimple)
     setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
+    setMethod("edaReport", "EDA", edaReportSimple)
     GCEDA <- CEDA(copula = "normal", margin = "norm",
                   popSize = population, maxGen = generation)
     GCEDA@name <- "GCEDA"
-    eda_cap <- capture.output(result$eda <- edaRun(GCEDA, fn, lower, upper))
+    eda_cap <- capture.output(result$eda <- edaRun(GCEDA, fn2, lower, upper))
 
     #画面出力から推移読み取り
     #最初と最後の位置
@@ -152,12 +154,12 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
       best_eda <- c(best_eda,
                     as.numeric(substr(eda_cap[i], pos1, pos2)))
     }
-    gen_list$EDA <- best_eda
+    gen_list$EDA <- best_eda * fns
     t <- proc.time() - t0
 
     #結果の整理
     sum_df0 <- as.data.frame(matrix(c(result$eda@bestSol,
-                                      result$eda@bestEval, t[3]), nrow = 1))
+                                      result$eda@bestEval * fns, t[3]), nrow = 1))
     sum_df0 <- data.frame(method = "EDA", sum_df0)
     names(sum_df0) <- sum_df_names
     sum_df <- rbind(sum_df, sum_df0)
@@ -172,7 +174,7 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   sum_df$method <- as.character(sum_df$method)
 
   #最適な結果
-  sum_best_df <- sum_df[order(sum_df$value * if(maximize){-1}else{1}), ][1, ]
+  sum_best_df <- sum_df[order(sum_df$value * fns), ][1, ]
   result$bestmethod <- sum_best_df[1, 1]
   result$bestpar <- sum_best_df[1, c(2: (vec_len + 1))]
   result$bestvalue <- sum_best_df[1, (2 + vec_len)]
@@ -252,9 +254,10 @@ plot.pboptim <- function(obj){
 
 set.seed(108)
 test <- pboptim(function(x){x[1]^2+x[2]^2},
-                method = c("DEO", "PSO"),
+                #method = c("DEO", "PSO", "GA"),
                 initialpar = c(1,1),
-                lower = c(-2,-2),upper = c(2,2))
+                lower = c(-2,-2),upper = c(2,2),
+                maximize = TRUE)
 
 
 plot(test)
