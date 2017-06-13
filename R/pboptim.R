@@ -36,6 +36,8 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   #初期設定
   result <- NULL
   gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, EDA = NULL)
+  #gen_df <- data.frame()
+
 
   #結果一覧保存用データフレーム
   sum_df <- NULL
@@ -223,38 +225,34 @@ summary.pboptim <- function(obj){
 
 
 plot.pboptim <- function(obj){
-  #範囲を計算
-  #digitsの値
-  all_list <- c(obj$gen_list$DEO, obj$gen_list$PSO, obj$gen_list$GA, obj$gen_list$EDA)
-  list_min <- min(all_list)
-  list_max <- max(all_list)
-  di_par <- ceiling(log(list_max - list_min, base = 10))
+  #plot用のデータ作成
+  gl <- obj$gen_list
+  plot_df <- data.frame(generation = c(1:obj$setting$generation))
+  if(!is.null(gl$DEO)){plot_df <- data.frame(plot_df, DEO = gl$DEO)}
+  if(!is.null(gl$PSO)){plot_df <- data.frame(plot_df, PSO = gl$PSO)}
+  if(!is.null(gl$GA)){plot_df <- data.frame(plot_df, GA = gl$GA)}
+  if(!is.null(gl$EDA)){plot_df <- data.frame(plot_df, EDA = gl$EDA)}
 
-  #yの最小値と最大値
-  ymin <- ceiling(list_min / (10^di_par)) * 10^di_par
-  ymax <- floor(list_min / (10^di_par)) * 10^di_par
+  #線の色と種類定義
+  data_n <- c(1:length(plot_df[1,]))
+  cols <- c("black", "red", "blue", "green")[data_n]
+  ltys <- c(1,2,3,4)[data_n]
 
-  #各アルゴリズムの最適値推移をプロットする関数
-  opt_plot <- function(obj, col = 1, new = TRUE){
-    if(is.null(obj)){return()}
-    par(new = new)
-    plot(obj, type = "l", ylim = c(ymax, ymin), ann = FALSE, col = col,
-         xlab = "Generation", ylab = "Fitness Value")
-  }
+  #凡例の位置
+  legend_pos <- if(obj$setting$maximize){"bottomright"}else{"topright"}
 
-  opt_plot(obj$gen_list$DEO, col = 1, new = FALSE)
-  opt_plot(obj$gen_list$PSO, col = 2)
-  opt_plot(obj$gen_list$GA, col = 3)
-  opt_plot(obj$gen_list$EDA, col = 4)
-
-  par(new = FALSE)
+  #プロット
+  matplot(plot_df[,1], plot_df[,-1],
+          type = "l", xlab = "Generation", ylab = "Value",
+          col = cols, lty = ltys)
+  legend(legend_pos, legend = names(plot_df[,-1]), col = cols, lty = ltys)
 
 }
 
 
 set.seed(108)
-par(mfrow = c(1,1))
 test <- pboptim(function(x){x[1]^2+x[2]^2},
+                method = c("DEO", "PSO"),
                 initialpar = c(1,1),
                 lower = c(-2,-2),upper = c(2,2))
 
