@@ -4,13 +4,12 @@
 library(DEoptim)
 library(pso)
 library(GA)
-library(copulaedas)
-
+library(soma)
 
 #Population based optimization
 #DEO, PSO, GA, EDAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
-                    method = c("DEO", "PSO", "GA", "EDA"),
+                    method = c("DEO", "PSO", "GA", "SOMA"),
                     population = 20, generation = 10,
                     trace = TRUE, maximize = FALSE
                     ){
@@ -35,7 +34,7 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
 
   #初期設定
   result <- NULL
-  gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, EDA = NULL)
+  gen_list <- list(DEO = NULL, PSO = NULL, GA = NULL, SOMA = NULL)
   fns <- if(maximize){-1}else{1}
   fn2 <- if(!maximize){fn}else{function(x){-fn(x)}}
 
@@ -132,38 +131,30 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     sum_df <- rbind(sum_df, sum_df0)
   }
 
-  #Estimation of Distribution Algorithm
-  if(!is.na(match("EDA", method))){
+  #Self-Organising Migrating Algorithm
+  if(!is.na(match("SOMA", method))){
     t0 <- proc.time()
-    cat("Estimation of Distribution Algorithm \n\n")
-    setMethod("edaTerminate", "EDA", edaTerminateMaxGen)
-    setMethod("edaReport", "EDA", edaReportSimple)
-    GCEDA <- CEDA(copula = "normal", margin = "norm",
-                  popSize = population, maxGen = generation)
-    GCEDA@name <- "GCEDA"
-    eda_cap <- capture.output(result$eda <- edaRun(GCEDA, fn2, lower, upper))
+    cat("Self-Organising Migrating Algorithm \n\n")
 
-    #画面出力から推移読み取り
-    #最初と最後の位置
-    pos1 <- regexpr("Generation", eda_cap[2])[1]+11
-    pos2 <- regexpr("Minimum", eda_cap[2])[1]+7
+    result$soma <- soma(fn2,
+                        bounds = list(min = lower, max = upper),
+                        options = list(minRelativeSep = -Inf, minAbsoluteSep = -Inf,
+                                       nMigrations = generation,
+                                       populationSize = population))
 
-    #切り出し
-    best_eda <- NULL
-    for(i in 3:length(eda_cap)){
-      best_eda <- c(best_eda,
-                    as.numeric(substr(eda_cap[i], pos1, pos2)))
-    }
-    gen_list$EDA <- best_eda * fns
+    gen_list$SOMA <- result$soma$history * fns
+    soma_best <- result$soma$cost[result$soma$leader] * fns
     t <- proc.time() - t0
 
     #結果の整理
-    sum_df0 <- as.data.frame(matrix(c(result$eda@bestSol,
-                                      result$eda@bestEval * fns, t[3]), nrow = 1))
-    sum_df0 <- data.frame(method = "EDA", sum_df0)
+    sum_df0 <- as.data.frame(matrix(c(result$soma$population[, result$soma$leader],
+                                      soma_best, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "SOMA", sum_df0)
     names(sum_df0) <- sum_df_names
     sum_df <- rbind(sum_df, sum_df0)
   }
+
+
 
   #まとめが存在するか確認
   if(is.null(sum_df)){
@@ -233,12 +224,12 @@ plot.pboptim <- function(obj){
   if(!is.null(gl$DEO)){plot_df <- data.frame(plot_df, DEO = gl$DEO)}
   if(!is.null(gl$PSO)){plot_df <- data.frame(plot_df, PSO = gl$PSO)}
   if(!is.null(gl$GA)){plot_df <- data.frame(plot_df, GA = gl$GA)}
-  if(!is.null(gl$EDA)){plot_df <- data.frame(plot_df, EDA = gl$EDA)}
+  if(!is.null(gl$SOMA)){plot_df <- data.frame(plot_df, SOMA = gl$SOMA)}
 
   #線の色と種類定義
   data_n <- c(1:length(plot_df[1,]))
   cols <- c("black", "red", "blue", "green")[data_n]
-  ltys <- c(1,2,3,4)[data_n]
+  ltys <- data_n
 
   #凡例の位置
   legend_pos <- if(obj$setting$maximize){"bottomright"}else{"topright"}
@@ -257,43 +248,10 @@ test <- pboptim(function(x){x[1]^2+x[2]^2},
                 #method = c("DEO", "PSO", "GA"),
                 initialpar = c(1,1),
                 lower = c(-2,-2),upper = c(2,2),
+                population = 20, generation = 100,
                 maximize = TRUE)
 
 
 plot(test)
 
 
-
-
-
-
-#optimx(par, fn, gr=NULL, hess=NULL, lower=-Inf, upper=Inf,
-#       method=c("Nelder-Mead","BFGS"), itnmax=NULL, hessian=FALSE,
-#       control=list(),
-
-#p1       p2         value fevals gevals niter convcode kkt1 kkt2
-#BFGS         9.889487 5.038007  1.190725e+03     14      5    NA        0   NA   NA
-#CG           9.890986 5.037998  1.190725e+03    307    101    NA        1   NA   NA
-#Nelder-Mead  9.892127 5.038049  1.190725e+03     41     NA    NA        0   NA   NA
-#L-BFGS-B     9.889511 5.038000  1.190725e+03     13     13    NA        0   NA   NA
-
-
-#参考
-#http://masaqol.hatenablog.com/entry/2016/07/31/233153
-#https://stat.ethz.ch/R-manual/R-devel/library/stats/html/optim.html
-#http://qiita.com/HirofumiYashima/items/c2e9ff4e3e9283ec1691
-#
-
-
-#参考
-library(optimx)
-
-loglik <- function(x, param) {
-  -sum(dnbinom(x, size = param[1], mu = param[2], log = TRUE))
-}
-
-set.seed(71)
-data <- rnbinom(500, size = 10, mu = 5)
-initparam <- c(10, 5)
-optimx(par = initparam, fn = loglik,
-       x = data, control = list(all.methods = TRUE))
