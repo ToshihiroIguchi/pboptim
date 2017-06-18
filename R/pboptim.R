@@ -1,13 +1,7 @@
-#Population Base Optimization
+#Population based search
 #pboptim package
 
-library(DEoptim)
-library(pso)
-library(GA)
-library(soma)
-
-#Population based optimization
-#DEO, PSO, GA, EDAのラッパー。
+#DEO, PSO, GA, SOMAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     method = c("DEO", "PSO", "GA", "SOMA"),
                     population = 20, generation = 10,
@@ -135,6 +129,7 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
   if(!is.na(match("SOMA", method))){
     t0 <- proc.time()
     cat("Self-Organising Migrating Algorithm \n\n")
+    cat("Caution! The initial value is not reflected. \n\n")
 
     result$soma <- soma(fn2,
                         bounds = list(min = lower, max = upper),
@@ -153,7 +148,6 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     names(sum_df0) <- sum_df_names
     sum_df <- rbind(sum_df, sum_df0)
   }
-
 
 
   #まとめが存在するか確認
@@ -241,17 +235,4 @@ plot.pboptim <- function(obj){
   legend(legend_pos, legend = names(plot_df[,-1]), col = cols, lty = ltys)
 
 }
-
-
-set.seed(108)
-test <- pboptim(function(x){x[1]^2+x[2]^2},
-                #method = c("DEO", "PSO", "GA"),
-                initialpar = c(1,1),
-                lower = c(-2,-2),upper = c(2,2),
-                population = 20, generation = 100,
-                maximize = TRUE)
-
-
-plot(test)
-
 
