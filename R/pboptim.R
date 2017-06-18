@@ -2,6 +2,7 @@
 #pboptim package
 
 
+
 #DEO, PSO, GA, SOMAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     method = c("DEO", "PSO", "GA", "SOMA"),
