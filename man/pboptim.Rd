@@ -40,3 +40,7 @@ result <- pboptim(function(x){x[1]^2+x[2]^2},
 plot(result)
 summary(result)
 }
+
+\references{
+Cortez, Paulo. Modern optimization with R. Springer, 2014.
+}
