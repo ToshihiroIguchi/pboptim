@@ -7,7 +7,22 @@
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     method = c("DEO", "PSO", "GA", "SOMA"),
                     population = 20, generation = 10,
-                    trace = TRUE, maximize = FALSE
+                    trace = TRUE, maximize = FALSE,
+                    DEOcontrol = list(
+                      strategy = 2, bs = FALSE, CR = 0.5, F = 0.8, p = 0.2, c = 0),
+                    PSOcontrol = list(
+                      s = floor(10+2*sqrt(length(pso_par))),
+                      k = 3, w = 0.7213, c.p = 1.193, type = "SPSO2007"),
+                    GAcontrol = list(
+                      pcrossover = 0.8,
+                      pmutation = 0.1,
+                      elitism = base::max(1, round(population * 0.05))
+                    ),
+                    SOMAcontrol = list(
+                      pathLength = 3,
+                      stepLength = 0.11,
+                      perturbationChance = 0.1
+                    )
                     ){
 
   #入力値のチェック
@@ -55,12 +70,18 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     result$deo <- DEoptim(fn = fn2,
                           lower = lower, upper = upper,
                           control = DEoptim.control(
-                            #VTR = if(maximize){Inf}else{-Inf},
-                            strategy = 2,
                             trace = trace,
                             initialpop = deo_par,
                             itermax = generation,
-                            NP = population))
+                            NP = population,
+
+                            strategy = DEOcontrol$strategy,
+                            bs = DEOcontrol$bs,
+                            CR = DEOcontrol$CR,
+                            F = DEOcontrol$F,
+                            p = DEOcontrol$p,
+                            c = DEOcontrol$c
+                            ))
 
     gen_list$DEO <- result$deo$member$bestvalit * fns
     t <- proc.time() - t0
@@ -92,7 +113,22 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
       fn = fn, lower = lower, upper = upper,
       control = list(maxit = generation, s = population,
                      fnscale = fns,
-                     trace = 1, REPORT = 1, trace.stats = 1))
+                     trace = if(trace){1}else{-1},
+
+                     REPORT = 1,
+                     trace.stats = trace,
+
+                     s = PSOcontrol$s,
+                     k = PSOcontrol$k,
+                     w = PSOcontrol$w,
+                     c.p = PSOcontrol$c.p,
+                     type = PSOcontrol$type
+
+                     #S=12, K=3, p=0.2297, w0=0.7213, w1=0.7213, c.p=1.193, c.g=1.193
+                     #v.max=NA, d=5.657, vectorize=FALSE, hybrid=off
+
+                     ))
+
     gen_list$PSO <- result$pso$stats$error * fns
     t <- proc.time() - t0
 
@@ -114,7 +150,13 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                     popSize = population, maxiter = generation, run = generation,
                     suggestions = initialpar,
                     optimArgs = list(control = list(fnscale = if(maxit){1}else{-1})),
-                    monitor = FALSE)
+                    monitor = FALSE,
+
+                    pcrossover = GAcontrol$pcrossover,
+                    pmutation = GAcontrol$pmutation,
+                    elitism = GAcontrol$elitism
+
+                    )
     gen_list$GA <- result$ga@summary[,1]*if(maximize){1}else{-1}
     ga_best <- result$ga@fitnessValue*if(maximize){1}else{-1}
     t <- proc.time() - t0
@@ -137,7 +179,12 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
                         bounds = list(min = lower, max = upper),
                         options = list(minRelativeSep = -Inf, minAbsoluteSep = -Inf,
                                        nMigrations = generation,
-                                       populationSize = population))
+                                       populationSize = population,
+
+                                       pathLength = SOMAcontrol$pathLength,
+                                       stepLength = SOMAcontrol$stepLength,
+                                       perturbationChance = SOMAcontrol$perturbationChance
+                                       ))
 
     gen_list$SOMA <- result$soma$history * fns
     soma_best <- result$soma$cost[result$soma$leader] * fns
