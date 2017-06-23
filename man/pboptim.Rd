@@ -34,6 +34,32 @@ SOMAcontrol = list(pathLength = 3, stepLength = 0.11, perturbationChance = 0.1))
 \item{trace}{Show progress of optimization calculation.}
 \item{maximize}{For maximization, specify TRUE. Default is FALSE.}
 
+\item{strategy}{
+defines the Differential Evolution strategy used in the optimization procedure:
+1: DE / rand / 1 / bin (classical strategy)
+2: DE / local-to-best / 1 / bin (default)
+3: DE / best / 1 / bin with jitter
+4: DE / rand / 1 / bin with per-vector-dither
+5: DE / rand / 1 / bin with per-generation-dither
+6: DE / current-to-p-best / 1
+any value not above: variation to DE / rand / 1 / bin: either-or-algorithm. Default strategy is currently 2.
+}
+\item{bs}{
+if FALSE then every mutant will be tested against a member in the previous generation, and the best value will proceed into the next generation (this is standard trial vs. target selection). If TRUE then the old generation and NP mutants will be sorted by their associated objective function values, and the best NP vectors will proceed into the next generation (best of parent and child selection). Default is FALSE.
+}
+\item{CR}{
+crossover probability from interval [0,1]. Default to 0.5.
+}
+\item{F}{
+differential weighting factor from interval [0,2]. Default to 0.8.
+}
+\item{p}{
+when strategy = 6, the top (100 * p)\% best solutions are used in the mutation. p must be defined in (0,1].
+}
+\item{c}{
+c controls the speed of the crossover adaptation. Higher values of c give more weight to the current successful mutations. c must be defined in (0,1].
+}
+
 }
 
 \examples{
