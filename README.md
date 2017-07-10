@@ -29,6 +29,7 @@ Load the pboptim package and attach it.
 ### Examples
 
 First define the function you want to optimize.
+
     fn <- function(x){ x[1]^2 + x[2]^2}
 
 Perform optimization.
