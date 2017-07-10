@@ -1,6 +1,6 @@
 \name{pboptim}
 \alias{pboptim}
-\title{Population Based Search.}
+\title{Population Based Search}
 \description{
 Pboptim is a wrapper for population based search.
 Algorithms "Differential Evolution Optimization",
