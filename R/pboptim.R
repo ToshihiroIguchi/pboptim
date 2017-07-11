@@ -2,10 +2,9 @@
 #pboptim package
 
 
-
 #DEO, PSO, GA, SOMAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
-                    method = c("DEO", "PSO", "GA", "SOMA"),
+                    method = c("DEO", "PSO", "GA"),
                     population = 20, generation = 10,
                     trace = TRUE, maximize = FALSE,
                     DEOcontrol = list(
@@ -60,8 +59,11 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
 
     #DEoptim用の初期値を作成。
     if(!is.null(initialpar)){
-      deo_par_rand <- rep((upper - lower)*runif(vec_len) + lower, times = (population -1))
-      deo_par <- matrix(c(initialpar, deo_par_rand), ncol = vec_len)
+      deo_par_rand <- c((upper - lower)*runif(vec_len * (population -1))
+                        + rep(lower, times = (population -1)))
+
+      deo_par <- matrix(c(initialpar, deo_par_rand), ncol = vec_len, byrow = TRUE)
+
     }else{
       deo_par <- NULL
     }

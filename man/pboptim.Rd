@@ -11,7 +11,7 @@ Algorithms "Differential Evolution Optimization",
 }
 \usage{
 pboptim(fn ,lower, upper, initialpar = NULL,
-method = c("DEO", "PSO", "GA", "SOMA"),
+method = c("DEO", "PSO", "GA"),
 population = 20, generation = 10,
 trace = TRUE, maximize = FALSE,
 DEOcontrol = list(strategy = 2, bs = FALSE, CR = 0.5, F = 0.8, p = 0.2, c = 0),
@@ -28,7 +28,11 @@ SOMAcontrol = list(pathLength = 3, stepLength = 0.11, perturbationChance = 0.1))
 \item{lower}{Lower bounds on the variables.}
 \item{upper}{Upper bounds on the variables.}
 \item{initialpar}{A vector representing the initial value. Default is NULL.}
-\item{method}{A vector that specifies the optimization technique.}
+\item{method}{
+A vector that specifies the optimization technique.
+Default is c("DEO", "PSO", "GA").
+SOMA can also be selected, but SOMA can not set the initial value.
+}
 \item{population}{The population size.}
 \item{generation}{The maximum number of iterations.}
 \item{trace}{Show progress of optimization calculation.}
