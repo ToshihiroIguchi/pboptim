@@ -283,7 +283,9 @@ plot.pboptim <- function(obj){
   matplot(plot_df[,1], plot_df[,-1],
           type = "l", xlab = "Generation", ylab = "Value",
           col = cols, lty = ltys)
-  legend(legend_pos, legend = names(plot_df[,-1]), col = cols, lty = ltys)
+
+  #凡例表示
+  legend(legend_pos, legend = names(plot_df)[-1], col = cols, lty = ltys)
 
 }
 
