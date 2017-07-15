@@ -42,21 +42,21 @@ randomsearch <- function(fn ,
 
   #最小値計算
   bestvalue <- Inf
-  min_result <- NULL
+  result_log <- NULL
   for(i in 1 : length(result)){
     if(result[i] < bestvalue){
       bestvalue <- result[i]
-      min_result[i] <- bestvalue
+      result_log[i] <- bestvalue
       bestpar <- initmat[i,]
     }else{
-      min_result[i] <- min_result[i - 1]
+      result_log[i] <- result_log[i - 1]
     }
   }
 
   #最大化の場合
   if(maximize){
     result <- -result
-    min_result  <- -min_result
+    result_log  <- -result_log
     bestvalue <- -bestvalue
   }
 
@@ -64,7 +64,7 @@ randomsearch <- function(fn ,
   #戻り値
   ret <- list()
   ret$result <- result
-  ret$min_result <- min_result
+  ret$result_log <- result_log
   ret$bestvalue <- bestvalue
   ret$bestpar <- bestpar
   ret$iterations <- iterations
@@ -87,7 +87,7 @@ summary.randomsearch <- function(data){
 }
 
 plot.randomsearch <- function(data){
-  plot(data$min_result, type = "l",
+  plot(data$result_log, type = "l",
        xlab = "Iterations", ylab = "Value",
        main ="Random search optimization result")
 }

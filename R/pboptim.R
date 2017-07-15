@@ -4,7 +4,7 @@
 
 #DEO, PSO, GA, SOMAのラッパー。
 pboptim <- function(fn ,lower, upper, initialpar = NULL,
-                    method = c("DEO", "PSO", "GA"),
+                    method = c("DEO", "PSO", "GA", "RS"),
                     population = 20, generation = 10,
                     trace = TRUE, maximize = FALSE,
                     DEOcontrol = list(
@@ -200,6 +200,34 @@ pboptim <- function(fn ,lower, upper, initialpar = NULL,
     sum_df <- rbind(sum_df, sum_df0)
   }
 
+  #Random Search
+  if(!is.na(match("RS", method))){
+    t0 <- proc.time()
+    cat("Random Search \n\n")
+
+    #fn ,
+    #lower, upper, initialpar = NULL,
+    #iterations = 1000,
+    #trace = TRUE,
+    #maximize = FALSE){
+
+    #randomsearchによる計算
+    result$rs <- randomsearch(fn = fn, lower = lower, upper = upper,
+                              initialpar = initialpar, maximize = maximize,
+                              iterations = population * generation)
+
+    gen_list$RS <- result$rs$result_log[
+      seq(population, population * generation, population)]
+    t <- proc.time() - t0
+
+    #結果の整理
+    sum_df0 <- as.data.frame(matrix(c(result$rs$bestpar,
+                                      result$rs$bestvalue, t[3]), nrow = 1))
+    sum_df0 <- data.frame(method = "RS", sum_df0)
+    names(sum_df0) <- sum_df_names
+    sum_df <- rbind(sum_df, sum_df0)
+  }
+
 
   #まとめが存在するか確認
   if(is.null(sum_df)){
@@ -270,10 +298,12 @@ plot.pboptim <- function(obj){
   if(!is.null(gl$PSO)){plot_df <- data.frame(plot_df, PSO = gl$PSO)}
   if(!is.null(gl$GA)){plot_df <- data.frame(plot_df, GA = gl$GA)}
   if(!is.null(gl$SOMA)){plot_df <- data.frame(plot_df, SOMA = gl$SOMA)}
+  if(!is.null(gl$RS)){plot_df <- data.frame(plot_df, RS = gl$RS)}
 
   #線の色と種類定義
   data_n <- c(1:length(plot_df[1,]))
-  cols <- c("black", "red", "blue", "green")[data_n]
+  cols <- rainbow(length(plot_df[1,]))
+
   ltys <- data_n
 
   #凡例の位置
@@ -282,7 +312,8 @@ plot.pboptim <- function(obj){
   #プロット
   matplot(plot_df[,1], plot_df[,-1],
           type = "l", xlab = "Generation", ylab = "Value",
-          col = cols, lty = ltys)
+          col = cols, lty = ltys,
+          main = "Population based search")
 
   #凡例表示
   legend(legend_pos, legend = names(plot_df)[-1], col = cols, lty = ltys)
