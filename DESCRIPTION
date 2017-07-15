@@ -1,7 +1,7 @@
 Package: pboptim
 Type: Package
 Title: Population Based Search
-Version: 0.1.1
+Version: 0.1.2
 Author: Toshihiro Iguchi
 Description: Pboptim is a wrapper for population based search.
 License: MIT
