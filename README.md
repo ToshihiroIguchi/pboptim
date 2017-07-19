@@ -6,8 +6,8 @@ Pboptim is a wrapper for population based search.
 Algorithms "Differential Evolution Optimization",
 "Particle Swarm Optimization",
 "Genetic Algorithms" and
-"Self-Organising Migrating Algorithm" can be used.
-"pboptim" depends on "DEoptim", "pso", "GA", and "soma" packages.
+"Random Search" can be used.
+"pboptim" depends on "DEoptim", "pso", and "GA" packages.
 
 ### Installation
 You can install from R console.
@@ -35,7 +35,7 @@ First define the function you want to optimize.
 Perform optimization.
     
     result <- pboptim(fn,
-    method = c("DEO", "PSO", "GA", "SOMA"),
+    method = c("DEO", "PSO", "GA"),
     initialpar = c(1, 1),
     lower = c(-2,-2), upper = c(2,2),
     population = 20, generation = 100,

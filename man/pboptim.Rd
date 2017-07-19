@@ -6,8 +6,10 @@ Pboptim is a wrapper for population based search.
 Algorithms "Differential Evolution Optimization",
 "Particle Swarm Optimization",
 "Genetic Algorithms" and
-"Self-Organising Migrating Algorithm" can be used.
-"pboptim" depends on "DEoptim", "pso", "GA", and "soma" packages.
+"Random Search "
+%"Self-Organising Migrating Algorithm"
+can be used.
+"pboptim" depends on "DEoptim", "pso" and "GA" packages.
 }
 \usage{
 pboptim(fn ,lower, upper, initialpar = NULL,
@@ -19,7 +21,8 @@ PSOcontrol = list(s = floor(10+2*sqrt(length(pso_par))),
 k = 3, w = 0.7213, c.p = 1.193, type = "SPSO2007"),
 GAcontrol = list(pcrossover = 0.8,pmutation = 0.1,
 elitism = base::max(1, round(population * 0.05))),
-SOMAcontrol = list(pathLength = 3, stepLength = 0.11, perturbationChance = 0.1))
+%SOMAcontrol = list(pathLength = 3, stepLength = 0.11, perturbationChance = 0.1)
+)
 
 }
 
@@ -31,7 +34,8 @@ SOMAcontrol = list(pathLength = 3, stepLength = 0.11, perturbationChance = 0.1))
 \item{method}{
 A vector that specifies the optimization technique.
 Default is c("DEO", "PSO", "GA").
-SOMA can also be selected, but SOMA can not set the initial value.
+RF can also be selected.
+%, but SOMA can not set the initial value.
 }
 \item{population}{The population size.}
 \item{generation}{The maximum number of iterations.}
@@ -70,7 +74,7 @@ c controls the speed of the crossover adaptation. Higher values of c give more w
 
 #Population Based Search
 result <- pboptim(function(x){x[1]^2+x[2]^2},
-                method = c("DEO", "PSO", "GA", "SOMA"),
+                method = c("DEO", "PSO", "GA"),
                 initialpar = c(1, 1),
                 lower = c(-2,-2), upper = c(2,2),
                 population = 20, generation = 100,
