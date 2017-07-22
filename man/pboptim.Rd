@@ -2,11 +2,11 @@
 \alias{pboptim}
 \title{Population Based Search}
 \description{
-Pboptim is a wrapper for population based search.
-Algorithms "Differential Evolution Optimization",
-"Particle Swarm Optimization",
-"Genetic Algorithms" and
-"Random Search "
+Pboptim is an R package that performs multiple population based search.
+Algorithms Differential Evolution Optimization,
+Particle Swarm Optimization,
+Genetic Algorithms and
+Random Search
 %"Self-Organising Migrating Algorithm"
 can be used.
 "pboptim" depends on "DEoptim", "pso" and "GA" packages.

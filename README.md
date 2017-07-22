@@ -2,11 +2,11 @@
 Population Based Search
 
 ### Description
-Pboptim is a wrapper for population based search.
-Algorithms "Differential Evolution Optimization",
-"Particle Swarm Optimization",
-"Genetic Algorithms" and
-"Random Search" can be used.
+Pboptim is an R package that performs multiple population based search.
+Algorithms Differential Evolution Optimization,
+Particle Swarm Optimization,
+Genetic Algorithms and
+Random Search can be used.
 "pboptim" depends on "DEoptim", "pso", and "GA" packages.
 
 ### Installation
